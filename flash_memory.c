@@ -44,7 +44,6 @@ UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
 uint32_t pageAddress = 0x08000000;
-int dataToSend = 1;
 
 // container for user input
 uint8_t inputMessage[1];
@@ -54,9 +53,11 @@ uint8_t writeMessage[] = " ww";
 uint8_t write2Message[] = " qq";
 uint8_t readMessage[] = " rr";
 
-uint8_t datatostore = 0x01;
-
 uint8_t bytes_temp[4];
+
+uint32_t Rx_Data[30];
+uint32_t dataToSend = 0x01;
+
 
 float valTrue = 1;
 float valFalse = 0;
@@ -91,7 +92,6 @@ static uint32_t GetPage(uint32_t Address) {
 	return 0;
 }
 
-
 void float2Bytes(uint8_t *ftoa_bytes_temp, float float_variable) {
 	union {
 		float a;
@@ -120,8 +120,7 @@ float Bytes2float(uint8_t *ftoa_bytes_temp) {
 	return float_variable;
 }
 
-uint32_t Flash_Write_Data(uint32_t StartPageAddress, uint32_t *Data,
-		uint16_t numberofwords) {
+uint32_t Flash_Write_Data(uint32_t StartPageAddress, uint32_t *Data) {
 
 	static FLASH_EraseInitTypeDef EraseInitStruct;
 	uint32_t PAGEError;
@@ -138,11 +137,14 @@ uint32_t Flash_Write_Data(uint32_t StartPageAddress, uint32_t *Data,
 	EraseInitStruct.PageAddress = StartPage;
 	EraseInitStruct.NbPages = 1;
 
-	HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError);
+	if (HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError) != HAL_OK) {
+		/*Error occurred while page erase.*/
+		return HAL_FLASH_GetError();
+	}
 
 	/* Program the user Flash area word by word*/
 
-	HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, StartPageAddress, Data);
+	HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, StartPageAddress, *Data);
 
 	/* Lock the Flash to disable the flash control register access (recommended
 	 to protect the FLASH memory against possible unwanted operation) *********/
@@ -151,8 +153,7 @@ uint32_t Flash_Write_Data(uint32_t StartPageAddress, uint32_t *Data,
 	return 0;
 }
 
-void Flash_Read_Data(uint32_t StartPageAddress, uint32_t *RxBuf,
-		uint16_t numberofwords) {
+void Flash_Read_Data(uint32_t StartPageAddress, uint32_t *RxBuf) {
 
 	*RxBuf = *(__IO uint32_t*) StartPageAddress;
 
@@ -162,14 +163,14 @@ void Flash_Write_NUM(uint32_t StartSectorAddress, float Num) {
 
 	float2Bytes(bytes_temp, Num);
 
-	Flash_Write_Data(StartSectorAddress, (uint32_t*) bytes_temp, 1);
+	Flash_Write_Data(StartSectorAddress, (uint32_t*) bytes_temp);
 }
 
 float Flash_Read_NUM(uint32_t StartSectorAddress) {
 	uint8_t buffer[4];
 	float value;
 
-	Flash_Read_Data(StartSectorAddress, (uint32_t*) buffer, 1);
+	Flash_Read_Data(StartSectorAddress, (uint32_t*) buffer);
 	value = Bytes2float(buffer);
 	return value;
 }
@@ -184,8 +185,12 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart1) { // callback for when 
 		Flash_Write_NUM(0x08005C10, valFalse);
 		RxVal = Flash_Read_NUM(0x08005C10);
 
+	} else if (userInput == 113) {
+		Flash_Write_Data(0x08005C10, &dataToSend);
+		Flash_Read_Data(0x08005C10, Rx_Data);
+
 	}
-	HAL_UART_Receive_IT(huart1, inputMessage, 1);
+		HAL_UART_Receive_IT(huart1, inputMessage, 1);
 }
 
 /* USER CODE END 0 */
@@ -239,6 +244,10 @@ int main(void) {
 			GPIOB->BSRR = 0x0001;
 		} else if (RxVal == 0) {
 			GPIOB->BRR = 0x0001;
+		}
+
+		if (*Rx_Data == 0x01) {
+			GPIOB->BSRR = 0x0002;
 		}
 
 		/* USER CODE END WHILE */
