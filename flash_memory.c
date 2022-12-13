@@ -56,11 +56,11 @@ uint8_t readMessage[] = " rr";
 uint8_t bytes_temp[4];
 
 uint32_t Rx_Data[30];
-uint32_t dataToSend = 0x01;
+uint32_t valTrue = 0x01;
+uint32_t valFalse = 0x00;
 
 
-float valTrue = 1;
-float valFalse = 0;
+
 float RxVal;
 
 /* USER CODE END PV */
@@ -92,43 +92,12 @@ static uint32_t GetPage(uint32_t Address) {
 	return 0;
 }
 
-void float2Bytes(uint8_t *ftoa_bytes_temp, float float_variable) {
-	union {
-		float a;
-		uint8_t bytes[4];
-	} thing;
-
-	thing.a = float_variable;
-
-	for (uint8_t i = 0; i < 4; i++) {
-		ftoa_bytes_temp[i] = thing.bytes[i];
-	}
-
-}
-
-float Bytes2float(uint8_t *ftoa_bytes_temp) {
-	union {
-		float a;
-		uint8_t bytes[4];
-	} thing;
-
-	for (uint8_t i = 0; i < 4; i++) {
-		thing.bytes[i] = ftoa_bytes_temp[i];
-	}
-
-	float float_variable = thing.a;
-	return float_variable;
-}
-
-uint32_t Flash_Write_Data(uint32_t StartPageAddress, uint32_t *Data) {
+uint32_t Flash_Write_Data(uint32_t StartPageAddress, uint32_t Data) {
 
 	static FLASH_EraseInitTypeDef EraseInitStruct;
 	uint32_t PAGEError;
 
-	/* Unlock the Flash to enable the flash control register access *************/
 	HAL_FLASH_Unlock();
-
-	/* Erase the user Flash area*/
 
 	uint32_t StartPage = GetPage(StartPageAddress);
 
@@ -137,17 +106,9 @@ uint32_t Flash_Write_Data(uint32_t StartPageAddress, uint32_t *Data) {
 	EraseInitStruct.PageAddress = StartPage;
 	EraseInitStruct.NbPages = 1;
 
-	if (HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError) != HAL_OK) {
-		/*Error occurred while page erase.*/
-		return HAL_FLASH_GetError();
-	}
+	HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError);
 
-	/* Program the user Flash area word by word*/
-
-	HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, StartPageAddress, *Data);
-
-	/* Lock the Flash to disable the flash control register access (recommended
-	 to protect the FLASH memory against possible unwanted operation) *********/
+	HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, StartPageAddress, Data);
 	HAL_FLASH_Lock();
 
 	return 0;
@@ -159,38 +120,27 @@ void Flash_Read_Data(uint32_t StartPageAddress, uint32_t *RxBuf) {
 
 }
 
-void Flash_Write_NUM(uint32_t StartSectorAddress, float Num) {
 
-	float2Bytes(bytes_temp, Num);
-
-	Flash_Write_Data(StartSectorAddress, (uint32_t*) bytes_temp);
-}
-
-float Flash_Read_NUM(uint32_t StartSectorAddress) {
-	uint8_t buffer[4];
-	float value;
-
-	Flash_Read_Data(StartSectorAddress, (uint32_t*) buffer);
-	value = Bytes2float(buffer);
-	return value;
-}
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart1) { // callback for when we receive an input
 	int userInput = (int) inputMessage[0];
 
 	if (userInput == 115) {
-		Flash_Write_NUM(0x08005C10, valTrue);
-		RxVal = Flash_Read_NUM(0x08005C10);
-
+		Flash_Write_Data(0x08005C10, 0x01);
+		Flash_Read_Data(0x08005C10, Rx_Data);
 	} else if (userInput == 114) {
-		Flash_Write_NUM(0x08005C10, valFalse);
-		RxVal = Flash_Read_NUM(0x08005C10);
+		Flash_Write_Data(0x08005C10, 0x02);
+		Flash_Read_Data(0x08005C10, Rx_Data);
 
 	} else if (userInput == 113) {
-		Flash_Write_Data(0x08005C10, &dataToSend);
+		Flash_Write_Data(0x08005C10, 0x03);
+		Flash_Read_Data(0x08005C10, Rx_Data);
+
+	} else if (userInput == 112) {
+		Flash_Write_Data(0x08005C10, 0x04);
 		Flash_Read_Data(0x08005C10, Rx_Data);
 
 	}
-		HAL_UART_Receive_IT(huart1, inputMessage, 1);
+	HAL_UART_Receive_IT(huart1, inputMessage, 1);
 }
 
 /* USER CODE END 0 */
@@ -226,7 +176,7 @@ int main(void) {
 	/* USER CODE BEGIN 2 */
 
 	int timer1 = HAL_GetTick();
-	RxVal = Flash_Read_NUM(0x08005C10);
+	Flash_Read_Data(0x08005C10, Rx_Data);
 	HAL_UART_Transmit_IT(&huart1, bootMessage, sizeof(bootMessage));
 	HAL_UART_Receive_IT(&huart1, inputMessage, 1);
 
@@ -240,14 +190,14 @@ int main(void) {
 			HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
 			timer1 = HAL_GetTick();
 		}
-		if (RxVal == 1) {
+		if (Rx_Data[0] == 0x01) {
 			GPIOB->BSRR = 0x0001;
-		} else if (RxVal == 0) {
+		} else if (Rx_Data[0] == 0x02) {
 			GPIOB->BRR = 0x0001;
-		}
-
-		if (*Rx_Data == 0x01) {
+		}else if (Rx_Data[0] == 0x03) {
 			GPIOB->BSRR = 0x0002;
+		} else if (Rx_Data[0] == 0x04) {
+			GPIOB->BRR = 0x0002;
 		}
 
 		/* USER CODE END WHILE */
