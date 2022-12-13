@@ -43,22 +43,12 @@
 UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
-uint32_t pageAddress = 0x08000000;
-
 // container for user input
 uint8_t inputMessage[1];
 
 uint8_t bootMessage[] = " Ready ";
-uint8_t writeMessage[] = " ww";
-uint8_t write2Message[] = " qq";
-uint8_t readMessage[] = " rr";
 
-uint8_t bytes_temp[4];
-
-uint32_t Rx_Data[30];
-uint32_t valTrue = 0x01;
-uint32_t valFalse = 0x00;
-
+uint32_t Rx_Data[4];
 
 
 float RxVal;
