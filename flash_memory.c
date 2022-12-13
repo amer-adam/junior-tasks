@@ -54,6 +54,8 @@ uint8_t writeMessage[] = " ww";
 uint8_t write2Message[] = " qq";
 uint8_t readMessage[] = " rr";
 
+uint8_t datatostore = 0x01;
+
 uint8_t bytes_temp[4];
 
 float valTrue = 1;
@@ -123,7 +125,6 @@ uint32_t Flash_Write_Data(uint32_t StartPageAddress, uint32_t *Data,
 
 	static FLASH_EraseInitTypeDef EraseInitStruct;
 	uint32_t PAGEError;
-	int sofar = 0;
 
 	/* Unlock the Flash to enable the flash control register access *************/
 	HAL_FLASH_Unlock();
@@ -137,20 +138,11 @@ uint32_t Flash_Write_Data(uint32_t StartPageAddress, uint32_t *Data,
 	EraseInitStruct.PageAddress = StartPage;
 	EraseInitStruct.NbPages = 1;
 
-	if (HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError) != HAL_OK) {
-		/*Error occurred while page erase.*/
-		return HAL_FLASH_GetError();
-	}
+	HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError);
 
 	/* Program the user Flash area word by word*/
 
-	if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, StartPageAddress, Data[sofar])
-			== HAL_OK) {
-		sofar++;
-	} else {
-		/* Error occurred while writing data in Flash memory*/
-		return HAL_FLASH_GetError();
-	}
+	HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, StartPageAddress, Data);
 
 	/* Lock the Flash to disable the flash control register access (recommended
 	 to protect the FLASH memory against possible unwanted operation) *********/
