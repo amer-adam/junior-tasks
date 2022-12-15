@@ -58,12 +58,12 @@ char readMessage[] = "\nYour to do list:\n";
 
 uint8_t bytes_temp[4];
 
-
 uint32_t addressInt = 0x08004C10;
 
-uint32_t address[6]= {0x08005C10, 0x08006C30, 0x08007C30, 0x08008C30, 0x08009C30, 0x0800AC30};
+uint32_t address[6] = { 0x08005C10, 0x08006C30, 0x08007C30, 0x08008C30,
+		0x08009C30, 0x0800AC30 };
 
-uint32_t address = 0x08005C10;
+//uint32_t addres  s = 0x08005C10;
 uint32_t address1 = 0x08006C30;
 uint32_t address2 = 0x08007C30;
 uint32_t address3 = 0x08008C30;
@@ -263,18 +263,18 @@ float Flash_Read_NUM(uint32_t StartSectorAddress) {
  }*/
 
 /*void appendToDoList(struct Node **head_ref, char *new_data) {
-//	 1. allocate node
-	struct Node *new_node = (struct Node*) malloc(sizeof(struct Node));
+ //	 1. allocate node
+ struct Node *new_node = (struct Node*) malloc(sizeof(struct Node));
 
-//	 2. put in the data
-	new_node->data = new_data;
+ //	 2. put in the data
+ new_node->data = new_data;
 
-//	 3. Make next of new node as head
-	new_node->next = (*head_ref);
+ //	 3. Make next of new node as head
+ new_node->next = (*head_ref);
 
-//	 4. move the head to point to the new node
-	(*head_ref) = new_node;
-}*/
+ //	 4. move the head to point to the new node
+ (*head_ref) = new_node;
+ }*/
 
 /*void deleteNode(struct Node **head) {
  //temp is used to freeing the memory
@@ -288,29 +288,34 @@ float Flash_Read_NUM(uint32_t StartSectorAddress) {
  }*/
 
 /*
-void displayToDoList(struct Node *n) {
+ void displayToDoList(struct Node *n) {
 
-	//	int i=0;
-	//	&& i < 5
-	while (n != NULL) {
-		//		Flash_Read_Data(address[i], (uint32_t*) Rx_Data, strlen(Rx_Data));
-		//		Convert_To_Str((uint32_t*) Rx_Data, tmpString, strlen(Rx_Data));
-		HAL_UART_Transmit(&huart1, (uint8_t*) n->data, strlen(n->data), 10);
-		//		i++;
-		n = n->next;
-	}
-}
-*/
+ //	int i=0;
+ //	&& i < 5
+ while (n != NULL) {
+ //		Flash_Read_Data(address[i], (uint32_t*) Rx_Data, strlen(Rx_Data));
+ //		Convert_To_Str((uint32_t*) Rx_Data, tmpString, strlen(Rx_Data));
+ HAL_UART_Transmit(&huart1, (uint8_t*) n->data, strlen(n->data), 10);
+ //		i++;
+ n = n->next;
+ }
+ }
+ */
 
 void readToDoList() {
 	numberOfTasks = Flash_Read_NUM(addressInt);
 
-	HAL_UART_Transmit(&huart1, (uint8_t*)readMessage, sizeof(readMessage),10);
+	HAL_UART_Transmit(&huart1, (uint8_t*) readMessage, sizeof(readMessage), 10);
 
-	if (numberOfTasks > 0) {
-		Flash_Read_Data(address, (uint32_t*) Rx_Data, 10);
+	for (int i = 0; i < numberOfTasks; i++) {
+		Flash_Read_Data(address[i], (uint32_t*) Rx_Data, 10);
 		Convert_To_Str((uint32_t*) Rx_Data, tmpString, 10);
 		HAL_UART_Transmit(&huart1, (uint8_t*) tmpString, 10, 10);
+	}
+/*
+
+	if (numberOfTasks > 0) {
+
 	}
 	if (numberOfTasks > 1) {
 		Flash_Read_Data(address1, (uint32_t*) Rx_Data, 10);
@@ -337,23 +342,24 @@ void readToDoList() {
 		Convert_To_Str((uint32_t*) Rx_Data, tmpString, 10);
 		HAL_UART_Transmit(&huart1, (uint8_t*) tmpString, 10, 10);
 	}
+*/
 
 }
 
 void deleteToDo(int number_of_task) {
 	switch (number_of_task) {
 	case 0:
-		Flash_Erase_Data(address, 10);
+		Flash_Erase_Data(address[0], 10);
 	case 1:
-		Flash_Erase_Data(address1, 10);
+		Flash_Erase_Data(address[1], 10);
 	case 2:
-		Flash_Erase_Data(address2, 10);
+		Flash_Erase_Data(address[2], 10);
 	case 3:
-		Flash_Erase_Data(address3, 10);
+		Flash_Erase_Data(address[3], 10);
 	case 4:
-		Flash_Erase_Data(address4, 10);
+		Flash_Erase_Data(address[4], 10);
 	case 5:
-		Flash_Erase_Data(address5, 10);
+		Flash_Erase_Data(address[5], 10);
 
 	}
 }
@@ -367,22 +373,22 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart1) { // callback for when 
 //		appendToDoList(&head, tx_data);
 		if (numberOfTasks == 0) {
 			HAL_UART_Receive(huart1, (uint8_t*) task1, 10, 100);
-			Flash_Write_Data(address, (uint32_t*) task1, 10);
+			Flash_Write_Data(address[0], (uint32_t*) task1, 10);
 		} else if (numberOfTasks == 1) {
 			HAL_UART_Receive(huart1, (uint8_t*) task2, 10, 100);
-			Flash_Write_Data(address1, (uint32_t*) task2, 10);
+			Flash_Write_Data(address[1], (uint32_t*) task2, 10);
 		} else if (numberOfTasks == 2) {
 			HAL_UART_Receive(huart1, (uint8_t*) task3, 10, 100);
-			Flash_Write_Data(address2, (uint32_t*) task3, 10);
+			Flash_Write_Data(address[2], (uint32_t*) task3, 10);
 		} else if (numberOfTasks == 3) {
 			HAL_UART_Receive(huart1, (uint8_t*) task4, 10, 100);
-			Flash_Write_Data(address3, (uint32_t*) task4, 10);
+			Flash_Write_Data(address[3], (uint32_t*) task4, 10);
 		} else if (numberOfTasks == 4) {
 			HAL_UART_Receive(huart1, (uint8_t*) task4, 10, 100);
-			Flash_Write_Data(address4, (uint32_t*) task4, 10);
+			Flash_Write_Data(address[4], (uint32_t*) task4, 10);
 		} else if (numberOfTasks == 5) {
 			HAL_UART_Receive(huart1, (uint8_t*) task5, 10, 100);
-			Flash_Write_Data(address5, (uint32_t*) task5, 10);
+			Flash_Write_Data(address[5], (uint32_t*) task5, 10);
 		}
 		numberOfTasks++;
 		Flash_Write_NUM(addressInt, numberOfTasks);
@@ -401,7 +407,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart1) { // callback for when 
 //		HAL_UART_Transmit(huart1, (uint8_t*) task1, sizeof(task1),10);
 
 	}
-		HAL_UART_Receive_IT(huart1, (uint8_t*) operation, 1);
+	HAL_UART_Receive_IT(huart1, (uint8_t*) operation, 1);
 }
 
 /* USER CODE END 0 */
