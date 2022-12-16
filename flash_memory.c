@@ -18,31 +18,36 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "string.h"
-#include <stdio.h>
-#include <stdlib.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <string.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
 
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+static void LL_Init(void);
 
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define ARRAY_LEN(x)            (sizeof(x) / sizeof((x)[0]))
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-
+void usart_process_data(const void*, size_t);
+void usart_send_string(const void*, size_t);
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
 
@@ -50,7 +55,7 @@ uint8_t operation[1]; // choose the operation you want to do: write or read or d
 uint8_t deleteInput[1]; // choose the operation you want to do: write or read or delete
 
 char bootMessage[] = "\nReady\n";
-uint8_t writeMessage[] = "\nenter task:";
+char writeMessage[] = "\nenter task:";
 char writeconfirmMessage[] = "task added";
 char deleteconfirmMessage[] = "task deleted";
 char deleteMessage[] = "\nenter num of task to delete";
@@ -67,17 +72,17 @@ uint32_t addresses[6] = { 0x08004C30, 0x08005C10, 0x08006C10, 0x08007C10,
 		0x08008C10, 0x08009C10 };
 
 //uint32_t addressInt = 0x08004C10;
-uint32_t address = 0x08005C10;
-uint32_t address1 = 0x08006C30;
-uint32_t address2 = 0x08007C30;
-uint32_t address3 = 0x08008C30;
-uint32_t address4 = 0x08009C30;
-uint32_t address5 = 0x0800AC30;
-
-struct Node {
-	char *data;
-	struct Node *next;
-};
+//uint32_t address = 0x08005C10;
+//uint32_t address1 = 0x08006C30;
+//uint32_t address2 = 0x08007C30;
+//uint32_t address3 = 0x08008C30;
+//uint32_t address4 = 0x08009C30;
+//uint32_t address5 = 0x0800AC30;
+//
+//struct Node {
+//	char *data;
+//	struct Node *next;
+//};
 
 char tx_data[10] = "FFFFFFFFFF";
 /*char header[20] = "\nend of tasks";
@@ -96,6 +101,9 @@ char Rx_Data[10] = "FFFFFFFFFF";
 
 int numberOfTasks = 0;
 
+int appendMode = 0;
+int deleteMode = 0;
+uint8_t usart_rx_dma_buffer[64];
 struct Node *head = NULL;
 /*
  struct Node *first = NULL;
@@ -109,6 +117,7 @@ struct Node *head = NULL;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
@@ -306,23 +315,29 @@ float Flash_Read_NUM(uint32_t StartSectorAddress) {
  }
  }*/
 
-void addToDoList() {
+void addToDoList(char *data) {
 
-	HAL_UART_Transmit(&huart1, (uint8_t*) writeMessage, sizeof(writeMessage),
-			10);
-	HAL_UART_Receive(&huart1, (uint8_t*) tx_data, 10, 10000);
+//	HAL_UART_Transmit(&huart1, (uint8_t*) writeMessage, sizeof(writeMessage),
+//			10);
+//	HAL_UART_Receive(&huart1, (uint8_t*) tx_data, 10, 10000);
 
 	for (int i = 0; i < 6; i++) {
 		if (i > 5) {
-			HAL_UART_Transmit(&huart1, (uint8_t*) maxtaskMessage,
-					strlen(maxtaskMessage), 100);
+//			HAL_UART_Transmit(&huart1, (uint8_t*) maxtaskMessage,
+//					strlen(maxtaskMessage), 100);
+//			LL_USART_TransmitData8(USART1, *(uint8_t*) maxtaskMessage);
+			usart_send_string(maxtaskMessage, strlen(maxtaskMessage));
 			break;
 		}
 		Flash_Read_Data(addresses[i], (uint32_t*) Rx_Data, 10);
 		if (*Rx_Data == (uint8_t) 0xFFFFFFFF) {
-			Flash_Write_Data(addresses[i], (uint32_t*) tx_data, 10);
-			HAL_UART_Transmit(&huart1, (uint8_t*) writeconfirmMessage,
-					strlen(writeconfirmMessage), 10);
+			Flash_Write_Data(addresses[i], (uint32_t*) data, 10);
+//			HAL_UART_Transmit(&huart1, (uint8_t*) writeconfirmMessage,
+//					strlen(writeconfirmMessage), 10);
+			usart_send_string(writeconfirmMessage, strlen(writeconfirmMessage));
+
+//			LL_USART_TransmitData8(USART1, *(uint8_t*) writeconfirmMessage);
+
 			break;
 		}
 	}
@@ -331,16 +346,23 @@ void addToDoList() {
 void readToDoList() {
 //	numberOfTasks = Flash_Read_NUM(addressInt);
 
-	HAL_UART_Transmit(&huart1, (uint8_t*) readMessage, sizeof(readMessage),
-			100);
+//	HAL_UART_Transmit(&huart1, (uint8_t*) readMessage, sizeof(readMessage),
+//			100);
+//	LL_USART_TransmitData8(USART1, *(uint8_t*) readMessage);
+	usart_send_string(readMessage, strlen(readMessage));
 
 	for (int i = 0; i < 6; i++) {
 		Flash_Read_Data(addresses[i], (uint32_t*) Rx_Data, 10);
 		if (*Rx_Data != (uint8_t) 0xFFFFFFFF) {
 			Convert_To_Str((uint32_t*) Rx_Data, tmpString, 10);
 			sprintf(task, "\n%d) ", i + 1);
-			HAL_UART_Transmit(&huart1, (uint8_t*) task, 3, 10);
-			HAL_UART_Transmit(&huart1, (uint8_t*) tmpString, 10, 10);
+//			HAL_UART_Transmit(&huart1, (uint8_t*) task, 3, 10);
+//			HAL_UART_Transmit(&huart1, (uint8_t*) tmpString, 10, 10);
+			usart_send_string(task, strlen(task));
+			usart_send_string(tmpString, strlen(tmpString));
+//			LL_USART_TransmitData8(USART1, *(uint8_t*) task);
+//			LL_USART_TransmitData8(USART1, *(uint8_t*) tmpString);
+
 		}
 	}
 
@@ -440,79 +462,263 @@ void clearAllTasks() {
 	 Flash_Erase_Data(address4, 10);
 	 Flash_Erase_Data(address5, 10);
 	 numberOfTasks = 0;*/
-	HAL_UART_Transmit(&huart1, (uint8_t*) dayMessage, strlen(dayMessage), 100);
+//	HAL_UART_Transmit(&huart1, (uint8_t*) dayMessage, strlen(dayMessage), 100);
 }
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart1) { // callback for when we receive an input
-	int userInput = (int) operation[0];
+static void LL_Init(void) {
+	LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_AFIO);
+	LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
+	LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOD);
 
-	if (userInput == 119) { // write operations
+	NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
 
-		addToDoList();
+	/* System interrupt init*/
+	NVIC_SetPriority(MemoryManagement_IRQn,
+			NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
+	NVIC_SetPriority(BusFault_IRQn,
+			NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
+	NVIC_SetPriority(UsageFault_IRQn,
+			NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
+	NVIC_SetPriority(SVCall_IRQn,
+			NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
+	NVIC_SetPriority(DebugMonitor_IRQn,
+			NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
+	NVIC_SetPriority(PendSV_IRQn,
+			NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
+	NVIC_SetPriority(SysTick_IRQn,
+			NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
+}
 
-		/*		if (numberOfTasks < 5) {
-		 HAL_UART_Transmit(huart1, (uint8_t*) writeMessage,
-		 sizeof(writeMessage), 10);
+void usart_init(void) {
+	LL_USART_InitTypeDef USART_InitStruct;
+	LL_GPIO_InitTypeDef GPIO_InitStruct;
 
+	/* Peripheral clock enable */
+	LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_USART1);
+	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMA1);
+	LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOA);
 
-		 appendToDoList(&head, tx_data);
-		 HAL_UART_Receive(huart1, (uint8_t*) task1, 10, 10000);
-		 Flash_Write_Data(numberOfTasks*1023 + address, (uint32_t*) task1, 10);
-		 if (numberOfTasks == 0) {
-		 HAL_UART_Receive(huart1, (uint8_t*) task1, 10, 10000);
-		 Flash_Write_Data(addresses[0], (uint32_t*) task1, 10);
-		 } else if (numberOfTasks == 1) {
-		 HAL_UART_Receive(huart1, (uint8_t*) task2, 10, 10000);
-		 Flash_Write_Data(addresses[1], (uint32_t*) task2, 10);
-		 } else if (numberOfTasks == 2) {
-		 HAL_UART_Receive(huart1, (uint8_t*) task3, 10, 10000);
-		 Flash_Write_Data(addresses[2], (uint32_t*) task3, 10);
-		 } else if (numberOfTasks == 3) {
-		 HAL_UART_Receive(huart1, (uint8_t*) task4, 10, 10000);
-		 Flash_Write_Data(addresses[3], (uint32_t*) task4, 10);
-		 } else if (numberOfTasks == 4) {
-		 HAL_UART_Receive(huart1, (uint8_t*) task4, 10, 10000);
-		 Flash_Write_Data(addresses[4], (uint32_t*) task4, 10);
-		 } else if (numberOfTasks == 5) {
-		 HAL_UART_Receive(huart1, (uint8_t*) task5, 10, 10000);
-		 Flash_Write_Data(addresses[5], (uint32_t*) task5, 10);
-		 }
-		 numberOfTasks++;
-		 Flash_Write_NUM(addressInt, numberOfTasks);
-		 HAL_UART_Transmit(huart1, (uint8_t*) writeconfirmMessage,
-		 strlen(writeconfirmMessage), 10);
+	/*
+	 * USART1 GPIO Configuration
+	 *
+	 * PA9   ------> USART1_TX
+	 * PA10  ------> USART1_RX
+	 */
+	GPIO_InitStruct.Pin = LL_GPIO_PIN_9;
+	GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
+	GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
+	GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+	LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-		 } else {
-		 HAL_UART_Transmit(huart1, (uint8_t*) maxtaskMessage,
-		 strlen(maxtaskMessage), 10);
-		 }
-		 saveToDolist(head);
-		 Flash_Write_Data(address1, (uint32_t*) task0, strlen(task0));
-		 Flash_Read_Data(address1, (uint32_t*) Rx_Data, strlen(Rx_Data));
-		 Convert_To_Str((uint32_t*) Rx_Data, tmpString, strlen(Rx_Data));
-		 */
-	} else if (userInput == 114) {
-//		displayToDoList(head);
-		readToDoList();
-//		HAL_UART_Transmit(huart1, (uint8_t*) task1, sizeof(task1), 10);
+	GPIO_InitStruct.Pin = LL_GPIO_PIN_10;
+	GPIO_InitStruct.Mode = LL_GPIO_MODE_FLOATING;
+	LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-	} else if (userInput == 100) {
-		HAL_UART_Transmit(huart1, (uint8_t*) deleteMessage,
-				strlen(deleteMessage), 10);
-		HAL_UART_Receive(huart1, deleteInput, 1, 10000);
-		int taskToDelete = deleteInput[0] - 48;
-		deleteToDo(taskToDelete);
-		HAL_UART_Transmit(huart1, (uint8_t*) deleteconfirmMessage,
-				strlen(deleteconfirmMessage), 10);
-		/*	char data[50];
-		 sprintf(data, " thus it %d, %d, %c\n", taskTODelete, (int)deleteInput[0], (char)deleteInput[0]);
-		 HAL_UART_Transmit(huart1, (uint8_t*) &data,
-		 strlen(data), 10);*/
-	} else if (userInput == 110) {
-		clearAllTasks();
+	/* USART1 DMA Init */
+
+	/* USART1_RX Init */
+	LL_DMA_SetDataTransferDirection(DMA1, LL_DMA_CHANNEL_5,
+	LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
+	LL_DMA_SetChannelPriorityLevel(DMA1, LL_DMA_CHANNEL_5, LL_DMA_PRIORITY_LOW);
+	LL_DMA_SetMode(DMA1, LL_DMA_CHANNEL_5, LL_DMA_MODE_CIRCULAR);
+	LL_DMA_SetPeriphIncMode(DMA1, LL_DMA_CHANNEL_5, LL_DMA_PERIPH_NOINCREMENT);
+	LL_DMA_SetMemoryIncMode(DMA1, LL_DMA_CHANNEL_5, LL_DMA_MEMORY_INCREMENT);
+	LL_DMA_SetPeriphSize(DMA1, LL_DMA_CHANNEL_5, LL_DMA_PDATAALIGN_BYTE);
+	LL_DMA_SetMemorySize(DMA1, LL_DMA_CHANNEL_5, LL_DMA_MDATAALIGN_BYTE);
+	LL_DMA_SetPeriphAddress(DMA1, LL_DMA_CHANNEL_5,
+			LL_USART_DMA_GetRegAddr(USART1));
+	LL_DMA_SetMemoryAddress(DMA1, LL_DMA_CHANNEL_5,
+			(uint32_t) usart_rx_dma_buffer);
+	LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_5,
+			ARRAY_LEN(usart_rx_dma_buffer));
+
+	/* Enable HT & TC interrupts */
+	LL_DMA_EnableIT_HT(DMA1, LL_DMA_CHANNEL_5);
+	LL_DMA_EnableIT_TC(DMA1, LL_DMA_CHANNEL_5);
+
+	/* DMA1_Channel5_IRQn interrupt configuration */
+	NVIC_SetPriority(DMA1_Channel5_IRQn,
+			NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
+	NVIC_EnableIRQ(DMA1_Channel5_IRQn);
+
+	/* USART configuration */
+	USART_InitStruct.BaudRate = 115200;
+	USART_InitStruct.DataWidth = LL_USART_DATAWIDTH_8B;
+	USART_InitStruct.StopBits = LL_USART_STOPBITS_1;
+	USART_InitStruct.Parity = LL_USART_PARITY_NONE;
+	USART_InitStruct.TransferDirection = LL_USART_DIRECTION_TX_RX;
+	USART_InitStruct.HardwareFlowControl = LL_USART_HWCONTROL_NONE;
+	LL_USART_Init(USART1, &USART_InitStruct);
+	LL_USART_ConfigAsyncMode(USART1);
+	LL_USART_EnableDMAReq_RX(USART1);
+	LL_USART_EnableIT_IDLE(USART1);
+
+	/* USART interrupt */
+	NVIC_SetPriority(USART1_IRQn,
+			NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
+	NVIC_EnableIRQ(USART1_IRQn);
+
+	/* Enable USART and DMA */
+	LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_5);
+	LL_USART_Enable(USART1);
+}
+
+void usart_rx_check(void) {
+	static size_t old_pos;
+	size_t pos;
+
+	/* Calculate current position in buffer and check for new data available */
+	pos = ARRAY_LEN(usart_rx_dma_buffer)
+			- LL_DMA_GetDataLength(DMA1, LL_DMA_CHANNEL_5);
+	if (pos != old_pos) { /* Check change in received data */
+		if (pos > old_pos) { /* Current position is over previous one */
+			/*
+			 * Processing is done in "linear" mode.
+			 *
+			 * Application processing is fast with single data block,
+			 * length is simply calculated by subtracting pointers
+			 *
+			 * [   0   ]
+			 * [   1   ] <- old_pos |------------------------------------|
+			 * [   2   ]            |                                    |
+			 * [   3   ]            | Single block (len = pos - old_pos) |
+			 * [   4   ]            |                                    |
+			 * [   5   ]            |------------------------------------|
+			 * [   6   ] <- pos
+			 * [   7   ]
+			 * [ N - 1 ]
+			 */
+			usart_process_data(&usart_rx_dma_buffer[old_pos], pos - old_pos);
+		} else {
+			/*
+			 * Processing is done in "overflow" mode..
+			 *
+			 * Application must process data twice,
+			 * since there are 2 linear memory blocks to handle
+			 *
+			 * [   0   ]            |---------------------------------|
+			 * [   1   ]            | Second block (len = pos)        |
+			 * [   2   ]            |---------------------------------|
+			 * [   3   ] <- pos
+			 * [   4   ] <- old_pos |---------------------------------|
+			 * [   5   ]            |                                 |
+			 * [   6   ]            | First block (len = N - old_pos) |
+			 * [   7   ]            |                                 |
+			 * [ N - 1 ]            |---------------------------------|
+			 */
+			usart_process_data(&usart_rx_dma_buffer[old_pos],
+			ARRAY_LEN(usart_rx_dma_buffer) - old_pos);
+			if (pos > 0) {
+				usart_process_data(&usart_rx_dma_buffer[0], pos);
+			}
+		}
+		old_pos = pos; /* Save current position as old for next transfers */
 	}
-	HAL_UART_Receive_IT(huart1, (uint8_t*) operation, 1);
 }
+
+/**
+ * \brief           Process received data over UART
+ * \note            Either process them directly or copy to other bigger buffer
+ * \param[in]       data: Data to process
+ * \param[in]       len: Length in units of bytes
+ */
+void usart_process_data(const void *data, size_t len) {
+	const uint8_t *d = data;
+//	char test[50];
+	//		sprintf(test, "[%d and %u]", (int)d, d[0]);
+
+	/*
+	 * This function is called on DMA TC or HT events, and on UART IDLE (if enabled) event.
+	 *
+	 * For the sake of this example, function does a loop-back data over UART in polling mode.
+	 * Check ringbuff RX-based example for implementation with TX & RX DMA transfer.
+	 */
+	if (appendMode == 1) {
+		addToDoList((char*) d);
+		appendMode = 0;
+	} else if (deleteMode) {
+		int taskToDelete = (int) d[0] - 48;
+		deleteToDo(taskToDelete);
+		usart_send_string(deleteconfirmMessage, strlen(deleteconfirmMessage));
+		deleteMode = 0;
+
+	} else {
+		if ((int) d[0] == 114) {
+			readToDoList();
+
+		} else if ((int) d[0] == 119) {
+			usart_send_string(writeMessage, strlen(writeMessage));
+			appendMode = 1;
+		} else if ((int) d[0] == 100) {
+			usart_send_string(deleteMessage, strlen(deleteMessage));
+			deleteMode = 1;
+		}
+	}
+}
+
+void usart_send_string(const void *str, size_t len) {
+	const uint8_t *d = str;
+	for (; len > 0; --len, ++d) {
+		LL_USART_TransmitData8(USART1, *d);
+		while (!LL_USART_IsActiveFlag_TXE(USART1)) {
+		}
+	}
+	while (!LL_USART_IsActiveFlag_TC(USART1)) {
+	}
+// usart_process_data(str, strlen(str));
+}
+
+/*
+ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart1) { // callback for when we receive an input
+ int userInput = (int) operation[0];
+
+ if (userInput == 119) { // write operations
+
+ addToDoList();
+
+ if (numberOfTasks < 5) {
+ HAL_UART_Transmit(huart1, (uint8_t*) writeMessage,
+ sizeof(writeMessage), 10);
+
+ s[5], (uint32_t*) task5, 10);
+ }
+ numberOfTasks++;
+ Flash_Write_NUM(addressInt, numberOfTasks);
+ HAL_UART_Transmit(huart1, (uint8_t*) writeconfirmMessage,
+ strlen(writeconfirmMessage), 10);
+
+ } else {
+ HAL_UART_Transmit(huart1, (uint8_t*) maxtaskMessage,
+ strlen(maxtaskMessage), 10);
+ }
+ saveToDolist(head);
+ Flash_Write_Data(address1, (uint32_t*) task0, strlen(task0));
+ Flash_Read_Data(address1, (uint32_t*) Rx_Data, strlen(Rx_Data));
+ Convert_To_Str((uint32_t*) Rx_Data, tmpString, strlen(Rx_Data));
+
+ } else if (userInput == 114) {
+ //		displayToDoList(head);
+ readToDoList();
+ //		HAL_UART_Transmit(huart1, (uint8_t*) task1, sizeof(task1), 10);
+
+ } else if (userInput == 100) {
+ HAL_UART_Transmit(huart1, (uint8_t*) deleteMessage,
+ strlen(deleteMessage), 10);
+ HAL_UART_Receive(huart1, deleteInput, 1, 10000);
+ int taskToDelete = deleteInput[0] - 48;
+ deleteToDo(taskToDelete);
+ HAL_UART_Transmit(huart1, (uint8_t*) deleteconfirmMessage,
+ strlen(deleteconfirmMessage), 10);
+ char data[50];
+ sprintf(data, " thus it %d, %d, %c\n", taskTODelete, (int)deleteInput[0], (char)deleteInput[0]);
+ HAL_UART_Transmit(huart1, (uint8_t*) &data,
+ strlen(data), 10);
+ } else if (userInput == 110) {
+ clearAllTasks();
+ }
+ HAL_UART_Receive_IT(huart1, (uint8_t*) operation, 1);
+ }
+ */
 
 /* USER CODE END 0 */
 
@@ -531,6 +737,7 @@ int main(void) {
 	HAL_Init();
 
 	/* USER CODE BEGIN Init */
+	LL_Init();
 
 	/* USER CODE END Init */
 
@@ -543,9 +750,12 @@ int main(void) {
 
 	/* Initialize all configured peripherals */
 	MX_GPIO_Init();
+	MX_DMA_Init();
 	MX_USART1_UART_Init();
 	/* USER CODE BEGIN 2 */
-	head = (struct Node*) malloc(sizeof(struct Node));
+	usart_init();
+
+//	head = (struct Node*) malloc(sizeof(struct Node));
 	/*first = (struct Node*) malloc(sizeof(struct Node));
 	 second = (struct Node*) malloc(sizeof(struct Node));
 	 third = (struct Node*) malloc(sizeof(struct Node));
@@ -570,12 +780,15 @@ int main(void) {
 	int timer1 = HAL_GetTick();
 //	Flash_Read_Data(address1, led1_fl);
 //	Flash_Read_Data(address2, led2_fl);
-	HAL_UART_Transmit(&huart1, (uint8_t*) bootMessage, strlen(bootMessage),
-			100);
-	HAL_UART_Transmit(&huart1, (uint8_t*) toturialMessage,
-			strlen(toturialMessage), 100);
+//	HAL_UART_Transmit(&huart1, (uint8_t*) bootMessage, strlen(bootMessage),
+//			100);
+//	HAL_UART_Transmit(&huart1, (uint8_t*) toturialMessage,
+//			strlen(toturialMessage), 100);
+	usart_send_string(bootMessage, strlen(bootMessage));
+	usart_send_string(toturialMessage, strlen(toturialMessage));
+//	LL_USART_TransmitData8(USART1, (uint8_t*) toturialMessage);
 
-	HAL_UART_Receive_IT(&huart1, (uint8_t*) operation, 1);
+//		HAL_UART_Receive_IT(&huart1, (uint8_t*) operation, 1);
 
 	/* USER CODE END 2 */
 
@@ -640,23 +853,84 @@ static void MX_USART1_UART_Init(void) {
 
 	/* USER CODE END USART1_Init 0 */
 
+	LL_USART_InitTypeDef USART_InitStruct = { 0 };
+
+	LL_GPIO_InitTypeDef GPIO_InitStruct = { 0 };
+
+	/* Peripheral clock enable */
+	LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_USART1);
+
+	LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOA);
+	/**USART1 GPIO Configuration
+	 PA9   ------> USART1_TX
+	 PA10   ------> USART1_RX
+	 */
+	GPIO_InitStruct.Pin = LL_GPIO_PIN_9;
+	GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
+	GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_HIGH;
+	GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+	LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+	GPIO_InitStruct.Pin = LL_GPIO_PIN_10;
+	GPIO_InitStruct.Mode = LL_GPIO_MODE_FLOATING;
+	LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+	/* USART1 DMA Init */
+
+	/* USART1_RX Init */
+	LL_DMA_SetDataTransferDirection(DMA1, LL_DMA_CHANNEL_5,
+	LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
+
+	LL_DMA_SetChannelPriorityLevel(DMA1, LL_DMA_CHANNEL_5, LL_DMA_PRIORITY_LOW);
+
+	LL_DMA_SetMode(DMA1, LL_DMA_CHANNEL_5, LL_DMA_MODE_CIRCULAR);
+
+	LL_DMA_SetPeriphIncMode(DMA1, LL_DMA_CHANNEL_5, LL_DMA_PERIPH_NOINCREMENT);
+
+	LL_DMA_SetMemoryIncMode(DMA1, LL_DMA_CHANNEL_5, LL_DMA_MEMORY_INCREMENT);
+
+	LL_DMA_SetPeriphSize(DMA1, LL_DMA_CHANNEL_5, LL_DMA_PDATAALIGN_BYTE);
+
+	LL_DMA_SetMemorySize(DMA1, LL_DMA_CHANNEL_5, LL_DMA_MDATAALIGN_BYTE);
+
+	/* USART1 interrupt Init */
+	NVIC_SetPriority(USART1_IRQn,
+			NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
+	NVIC_EnableIRQ(USART1_IRQn);
+
 	/* USER CODE BEGIN USART1_Init 1 */
 
 	/* USER CODE END USART1_Init 1 */
-	huart1.Instance = USART1;
-	huart1.Init.BaudRate = 9600;
-	huart1.Init.WordLength = UART_WORDLENGTH_8B;
-	huart1.Init.StopBits = UART_STOPBITS_1;
-	huart1.Init.Parity = UART_PARITY_NONE;
-	huart1.Init.Mode = UART_MODE_TX_RX;
-	huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-	huart1.Init.OverSampling = UART_OVERSAMPLING_16;
-	if (HAL_UART_Init(&huart1) != HAL_OK) {
-		Error_Handler();
-	}
+	USART_InitStruct.BaudRate = 9600;
+	USART_InitStruct.DataWidth = LL_USART_DATAWIDTH_8B;
+	USART_InitStruct.StopBits = LL_USART_STOPBITS_1;
+	USART_InitStruct.Parity = LL_USART_PARITY_NONE;
+	USART_InitStruct.TransferDirection = LL_USART_DIRECTION_TX_RX;
+	USART_InitStruct.HardwareFlowControl = LL_USART_HWCONTROL_NONE;
+	USART_InitStruct.OverSampling = LL_USART_OVERSAMPLING_16;
+	LL_USART_Init(USART1, &USART_InitStruct);
+	LL_USART_ConfigAsyncMode(USART1);
+	LL_USART_Enable(USART1);
 	/* USER CODE BEGIN USART1_Init 2 */
 
 	/* USER CODE END USART1_Init 2 */
+
+}
+
+/**
+ * Enable DMA controller clock
+ */
+static void MX_DMA_Init(void) {
+
+	/* Init with LL driver */
+	/* DMA controller clock enable */
+	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMA1);
+
+	/* DMA interrupt init */
+	/* DMA1_Channel5_IRQn interrupt configuration */
+	NVIC_SetPriority(DMA1_Channel5_IRQn,
+			NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
+	NVIC_EnableIRQ(DMA1_Channel5_IRQn);
 
 }
 
