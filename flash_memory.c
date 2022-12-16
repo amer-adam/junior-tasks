@@ -49,21 +49,22 @@ UART_HandleTypeDef huart1;
 uint8_t operation[1]; // choose the operation you want to do: write or read or delete
 uint8_t deleteInput[1]; // choose the operation you want to do: write or read or delete
 
-uint8_t bootMessage[] = "\nReady\n";
+char bootMessage[] = "\nReady\n";
 uint8_t writeMessage[] = "\nenter task:";
 char writeconfirmMessage[] = "task added";
 char deleteconfirmMessage[] = "task deleted";
 char deleteMessage[] = "\nenter num of task to delete";
 char readMessage[] = "\nYour to do list:\n";
+char dayMessage[] = "\nnew day has been started\n";
+char maxtaskMessage[] =
+		"\ncan't add task.you reached your max number of tasks per day. upgrade to premium to enjoy more tasks per day starting from 50rm per month\n";
+char toturialMessage[] =
+		"\nw to write. r to read. d to delete. n for new day. max 6 tasks per day. 10 char per task\n";
 
 uint8_t bytes_temp[4];
 
 uint32_t addressInt = 0x08004C10;
-
-uint32_t address[6] = { 0x08005C10, 0x08006C30, 0x08007C30, 0x08008C30,
-		0x08009C30, 0x0800AC30 };
-
-//uint32_t addres  s = 0x08005C10;
+uint32_t address = 0x08005C10;
 uint32_t address1 = 0x08006C30;
 uint32_t address2 = 0x08007C30;
 uint32_t address3 = 0x08008C30;
@@ -305,97 +306,124 @@ float Flash_Read_NUM(uint32_t StartSectorAddress) {
 void readToDoList() {
 	numberOfTasks = Flash_Read_NUM(addressInt);
 
-	HAL_UART_Transmit(&huart1, (uint8_t*) readMessage, sizeof(readMessage), 10);
-
-	for (int i = 0; i < numberOfTasks; i++) {
-		Flash_Read_Data(address[i], (uint32_t*) Rx_Data, 10);
-		Convert_To_Str((uint32_t*) Rx_Data, tmpString, 10);
-		HAL_UART_Transmit(&huart1, (uint8_t*) tmpString, 10, 10);
-	}
-/*
+	HAL_UART_Transmit(&huart1, (uint8_t*) readMessage, sizeof(readMessage),
+			100);
 
 	if (numberOfTasks > 0) {
-
+		Flash_Read_Data(address, (uint32_t*) Rx_Data, 10);
+		if (*Rx_Data != (uint8_t) 0xFFFFFFFF) {
+			Convert_To_Str((uint32_t*) Rx_Data, tmpString, 10);
+			HAL_UART_Transmit(&huart1, (uint8_t*) tmpString, 10, 10);
+		}
 	}
 	if (numberOfTasks > 1) {
 		Flash_Read_Data(address1, (uint32_t*) Rx_Data, 10);
-		Convert_To_Str((uint32_t*) Rx_Data, tmpString, 10);
-		HAL_UART_Transmit(&huart1, (uint8_t*) tmpString, 10, 10);
+		if (*Rx_Data != (uint8_t) 0xFFFFFFFF) {
+			Convert_To_Str((uint32_t*) Rx_Data, tmpString, 10);
+			HAL_UART_Transmit(&huart1, (uint8_t*) tmpString, 10, 10);
+		}
 	}
 	if (numberOfTasks > 2) {
 		Flash_Read_Data(address2, (uint32_t*) Rx_Data, 10);
-		Convert_To_Str((uint32_t*) Rx_Data, tmpString, 10);
-		HAL_UART_Transmit(&huart1, (uint8_t*) tmpString, 10, 10);
+		if (*Rx_Data != (uint8_t) 0xFFFFFFFF) {
+			Convert_To_Str((uint32_t*) Rx_Data, tmpString, 10);
+			HAL_UART_Transmit(&huart1, (uint8_t*) tmpString, 10, 10);
+		}
 	}
 	if (numberOfTasks > 3) {
 		Flash_Read_Data(address3, (uint32_t*) Rx_Data, 10);
-		Convert_To_Str((uint32_t*) Rx_Data, tmpString, 10);
-		HAL_UART_Transmit(&huart1, (uint8_t*) tmpString, 10, 10);
+		if (*Rx_Data != (uint8_t) 0xFFFFFFFF) {
+			Convert_To_Str((uint32_t*) Rx_Data, tmpString, 10);
+			HAL_UART_Transmit(&huart1, (uint8_t*) tmpString, 10, 10);
+		}
 	}
 	if (numberOfTasks > 4) {
 		Flash_Read_Data(address4, (uint32_t*) Rx_Data, 10);
-		Convert_To_Str((uint32_t*) Rx_Data, tmpString, 10);
-		HAL_UART_Transmit(&huart1, (uint8_t*) tmpString, 10, 10);
+		if (*Rx_Data != (uint8_t) 0xFFFFFFFF) {
+			Convert_To_Str((uint32_t*) Rx_Data, tmpString, 10);
+			HAL_UART_Transmit(&huart1, (uint8_t*) tmpString, 10, 10);
+		}
 	}
 	if (numberOfTasks > 5) {
 		Flash_Read_Data(address5, (uint32_t*) Rx_Data, 10);
-		Convert_To_Str((uint32_t*) Rx_Data, tmpString, 10);
-		HAL_UART_Transmit(&huart1, (uint8_t*) tmpString, 10, 10);
+		if (*Rx_Data != (uint8_t) 0xFFFFFFFF) {
+			Convert_To_Str((uint32_t*) Rx_Data, tmpString, 10);
+			HAL_UART_Transmit(&huart1, (uint8_t*) tmpString, 10, 10);
+		}
 	}
-*/
 
 }
 
 void deleteToDo(int number_of_task) {
-	switch (number_of_task) {
+	switch (number_of_task - 1) {
 	case 0:
-		Flash_Erase_Data(address[0], 10);
+		Flash_Erase_Data(address, 10);
+		break;
 	case 1:
-		Flash_Erase_Data(address[1], 10);
+		Flash_Erase_Data(address1, 10);
+		break;
 	case 2:
-		Flash_Erase_Data(address[2], 10);
+		Flash_Erase_Data(address2, 10);
+		break;
 	case 3:
-		Flash_Erase_Data(address[3], 10);
+		Flash_Erase_Data(address3, 10);
+		break;
 	case 4:
-		Flash_Erase_Data(address[4], 10);
+		Flash_Erase_Data(address4, 10);
+		break;
 	case 5:
-		Flash_Erase_Data(address[5], 10);
+		Flash_Erase_Data(address5, 10);
 
 	}
+}
+
+void startNewDay() {
+	Flash_Erase_Data(addressInt, 10);
+	Flash_Erase_Data(address, 10);
+	Flash_Erase_Data(address1, 10);
+	Flash_Erase_Data(address2, 10);
+	Flash_Erase_Data(address3, 10);
+	Flash_Erase_Data(address4, 10);
+	Flash_Erase_Data(address5, 10);
+	numberOfTasks = 0;
+	HAL_UART_Transmit(&huart1, (uint8_t*) dayMessage, strlen(dayMessage), 100);
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart1) { // callback for when we receive an input
 	int userInput = (int) operation[0];
 
 	if (userInput == 119) { // write operations
-		HAL_UART_Transmit(huart1, (uint8_t*) writeMessage, sizeof(writeMessage),
-				10);
+		if (numberOfTasks < 5) {
+			HAL_UART_Transmit(huart1, (uint8_t*) writeMessage,sizeof(writeMessage), 10);
 //		appendToDoList(&head, tx_data);
-		if (numberOfTasks == 0) {
-			HAL_UART_Receive(huart1, (uint8_t*) task1, 10, 100);
-			Flash_Write_Data(address[0], (uint32_t*) task1, 10);
-		} else if (numberOfTasks == 1) {
-			HAL_UART_Receive(huart1, (uint8_t*) task2, 10, 100);
-			Flash_Write_Data(address[1], (uint32_t*) task2, 10);
-		} else if (numberOfTasks == 2) {
-			HAL_UART_Receive(huart1, (uint8_t*) task3, 10, 100);
-			Flash_Write_Data(address[2], (uint32_t*) task3, 10);
-		} else if (numberOfTasks == 3) {
-			HAL_UART_Receive(huart1, (uint8_t*) task4, 10, 100);
-			Flash_Write_Data(address[3], (uint32_t*) task4, 10);
-		} else if (numberOfTasks == 4) {
-			HAL_UART_Receive(huart1, (uint8_t*) task4, 10, 100);
-			Flash_Write_Data(address[4], (uint32_t*) task4, 10);
-		} else if (numberOfTasks == 5) {
-			HAL_UART_Receive(huart1, (uint8_t*) task5, 10, 100);
-			Flash_Write_Data(address[5], (uint32_t*) task5, 10);
+//		HAL_UART_Receive(huart1, (uint8_t*) task1, 10, 10000);
+//		Flash_Write_Data(numberOfTasks*1023 + address, (uint32_t*) task1, 10);
+			if (numberOfTasks == 0) {
+				HAL_UART_Receive(huart1, (uint8_t*) task1, 10, 10000);
+				Flash_Write_Data(address, (uint32_t*) task1, 10);
+			} else if (numberOfTasks == 1) {
+				HAL_UART_Receive(huart1, (uint8_t*) task2, 10, 10000);
+				Flash_Write_Data(address1, (uint32_t*) task2, 10);
+			} else if (numberOfTasks == 2) {
+				HAL_UART_Receive(huart1, (uint8_t*) task3, 10, 10000);
+				Flash_Write_Data(address2, (uint32_t*) task3, 10);
+			} else if (numberOfTasks == 3) {
+				HAL_UART_Receive(huart1, (uint8_t*) task4, 10, 10000);
+				Flash_Write_Data(address3, (uint32_t*) task4, 10);
+			} else if (numberOfTasks == 4) {
+				HAL_UART_Receive(huart1, (uint8_t*) task4, 10, 10000);
+				Flash_Write_Data(address4, (uint32_t*) task4, 10);
+			} else if (numberOfTasks == 5) {
+				HAL_UART_Receive(huart1, (uint8_t*) task5, 10, 10000);
+				Flash_Write_Data(address5, (uint32_t*) task5, 10);
+			}
+			numberOfTasks++;
+			Flash_Write_NUM(addressInt, numberOfTasks);
+			HAL_UART_Transmit(huart1, (uint8_t*) writeconfirmMessage,strlen(writeconfirmMessage), 10);
+
+		} else {
+			HAL_UART_Transmit(huart1, (uint8_t*) maxtaskMessage,strlen(maxtaskMessage), 10);
 		}
-		numberOfTasks++;
-		Flash_Write_NUM(addressInt, numberOfTasks);
-
-		HAL_UART_Transmit(huart1, (uint8_t*) writeconfirmMessage,
-				strlen(writeconfirmMessage), 10);
-
 //		saveToDolist(head);
 
 //		Flash_Write_Data(address1, (uint32_t*) task0, strlen(task0));
@@ -406,6 +434,21 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart1) { // callback for when 
 		readToDoList();
 //		HAL_UART_Transmit(huart1, (uint8_t*) task1, sizeof(task1),10);
 
+	} else if (userInput == 100) {
+		HAL_UART_Transmit(huart1, (uint8_t*) deleteMessage,
+				strlen(deleteMessage), 10);
+		HAL_UART_Receive(huart1, deleteInput, 1, 10000);
+		int taskTODelete = deleteInput[0] - 48;
+//		char data[50];
+//		sprintf(data, " thus it %d, %d, %c\n", taskTODelete, (int)deleteInput[0], (char)deleteInput[0]);
+//		HAL_UART_Transmit(huart1, (uint8_t*) &data,
+//				strlen(data), 10);
+		deleteToDo(taskTODelete);
+		HAL_UART_Transmit(huart1, (uint8_t*) deleteconfirmMessage,
+				strlen(deleteconfirmMessage), 10);
+
+	} else if (userInput == 110) {
+		startNewDay();
 	}
 	HAL_UART_Receive_IT(huart1, (uint8_t*) operation, 1);
 }
@@ -466,8 +509,11 @@ int main(void) {
 	int timer1 = HAL_GetTick();
 //	Flash_Read_Data(address1, led1_fl);
 //	Flash_Read_Data(address2, led2_fl);
-	HAL_UART_Transmit_IT(&huart1, (uint8_t*) bootMessage, sizeof(bootMessage));
-	readToDoList();
+	HAL_UART_Transmit(&huart1, (uint8_t*) bootMessage, strlen(bootMessage),
+			100);
+	HAL_UART_Transmit(&huart1, (uint8_t*) toturialMessage,
+			strlen(toturialMessage), 100);
+
 	HAL_UART_Receive_IT(&huart1, (uint8_t*) operation, 1);
 
 	/* USER CODE END 2 */
