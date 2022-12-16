@@ -992,3 +992,65 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//stm32f1xx_it.c
+
+void DMA1_Channel5_IRQHandler(void) {
+	/* USER CODE BEGIN DMA1_Channel5_IRQn 0 */
+
+	/* USER CODE END DMA1_Channel5_IRQn 0 */
+
+	/* USER CODE BEGIN DMA1_Channel5_IRQn 1 */
+	/* Check half-transfer complete interrupt */
+	if (LL_DMA_IsEnabledIT_HT(DMA1, LL_DMA_CHANNEL_5)
+			&& LL_DMA_IsActiveFlag_HT5(DMA1)) {
+		LL_DMA_ClearFlag_HT5(DMA1); /* Clear half-transfer complete flag */
+		usart_rx_check(); /* Check for data to process */
+	}
+
+	/* Check transfer-complete interrupt */
+	if (LL_DMA_IsEnabledIT_TC(DMA1, LL_DMA_CHANNEL_5)
+			&& LL_DMA_IsActiveFlag_TC5(DMA1)) {
+		LL_DMA_ClearFlag_TC5(DMA1); /* Clear transfer complete flag */
+		usart_rx_check(); /* Check for data to process */
+	}
+
+	/* USER CODE END DMA1_Channel5_IRQn 1 */
+}
+
+/**
+ * @brief This function handles USART1 global interrupt.
+ */
+void USART1_IRQHandler(void) {
+	/* USER CODE BEGIN USART1_IRQn 0 */
+
+	/* USER CODE END USART1_IRQn 0 */
+	/* USER CODE BEGIN USART1_IRQn 1 */
+	if (LL_USART_IsEnabledIT_IDLE(USART1)
+			&& LL_USART_IsActiveFlag_IDLE(USART1)) {
+		LL_USART_ClearFlag_IDLE(USART1); /* Clear IDLE line flag */
+		usart_rx_check(); /* Check for data to process */
+	}
+
+	/* USER CODE END USART1_IRQn 1 */
+}
+
