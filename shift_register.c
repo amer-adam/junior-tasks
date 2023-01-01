@@ -133,17 +133,6 @@ int main(void) {
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
 	while (1) {
-//		regs ^= PINS[1]; // convert user input from ASCI to int then toggle the corresponding pin
-//		HAL_SPI_Transmit(&hspi1, &regs, 1, 1);
-//		GPIOB->ODR &= ~GPIO_PIN_6;
-//		GPIOB->ODR |= GPIO_PIN_6;
-//		HAL_Delay(500);
-
-//		HAL_Delay(500);
-//	   HAL_SPI_Transmit(&hspi1, &ledsOFF, 1, 1);
-//	   GPIOB -> ODR &= ~GPIO_PIN_6;
-//	   GPIOB -> ODR |= GPIO_PIN_6;
-//	   HAL_Delay(500);
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
