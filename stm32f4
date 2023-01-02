@@ -53,8 +53,8 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void initTim2(void) {
-	//ENABLE TIM2 CLOCK
+void initTim(void) {
+	//ENABLE TIM2 and TIM3 CLOCK
 	RCC->APB1ENR |= (1u << 0); // timer2
 	RCC->APB1ENR |= (1u << 1); // timer3
 
@@ -70,7 +70,7 @@ void initTim2(void) {
 	TIM2->CNT = 0;
 	TIM3->CNT = 0;
 
-	//ENABLE TIM2 COUNTER
+	//ENABLE TIM2 and TIM3 COUNTER
 	TIM2->CR1 |= (1u << 0);
 	TIM3->CR1 |= (1u << 0);
 }
@@ -102,40 +102,50 @@ void initGPIO(void) {
 
 }
 
-void initClock(void){
+void initClock(void) {
 
 	//ENABLE HSE and wait for the HSE to become Ready
-	RCC->CR |= 1<<16;
-	while (!(RCC->CR & (1<<17)));
+	RCC->CR |= RCC_CR_HSEON;
+	while (!(RCC->CR & RCC_CR_HSERDY))
+		;
 
 	//Set the POWER ENABLE CLOCK
-	RCC->APB1ENR |= 1<<28;
+	RCC->APB1ENR |= RCC_APB1ENR_PWREN;
 
 	//Set the VOLTAGE REGULATOR
-	PWR->CR |= 3<<14;
+	PWR->CR |= PWR_CR_VOS;
 
 	//Configure the FLASH PREFETCH and the LATENCY Related Settings
-	FLASH->ACR = (1<<8) | (1<<9)| (1<<10)| (5<<0);
+	FLASH->ACR = FLASH_ACR_PRFTEN | FLASH_ACR_ICEN | FLASH_ACR_DCEN | FLASH_ACR_LATENCY_5WS;
+
+
+	NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
 
 	// AHB PR
-	RCC->CFGR |= RCC_SYSCLK_DIV1;
+	RCC->CFGR |= RCC_CFGR_HPRE_DIV1;
 
 	// APB1 PR
-	RCC->CFGR |= RCC_HCLK_DIV4;
+	RCC->CFGR |= RCC_CFGR_PPRE1_DIV4;
 
 	// APB2 PR
-	RCC->CFGR |= RCC_HCLK_DIV2;
+	RCC->CFGR |= RCC_CFGR_PPRE2_DIV2;
+
 
 	//Configure the MAIN PLL
-	RCC->PLLCFGR = (25 <<0) | (336 << 6) | (2 <<16) | (1<<22);
+	RCC->PLLCFGR = (25U << RCC_PLLCFGR_PLLM_Pos)
+			| (336U << RCC_PLLCFGR_PLLN_Pos)
+			| (((2U >> 1U) - 1U) << RCC_PLLCFGR_PLLP_Pos)
+			| 4U << RCC_PLLCFGR_PLLQ_Pos | RCC_PLLSOURCE_HSE;
 
 	//Enable the PLL and wait for it to become ready
-	RCC->CR |= (1<<24);
-	while (!(RCC->CR & (1<<25)));
+	RCC->CR |= RCC_CR_PLLON;
+	while (!(RCC->CR & RCC_CR_PLLRDY))
+		;
 
 	//Select the Clock Source and wait for it to be set
-	RCC->CFGR |= (2<<0);
-	while (!(RCC->CFGR & (2<<2)));
+	RCC->CFGR |= RCC_CFGR_SW_PLL ;
+	while (!(RCC->CFGR & RCC_CFGR_SWS_PLL))
+		;
 
 }
 /* USER CODE END 0 */
@@ -153,17 +163,16 @@ int main(void) {
 
 	/* Reset of all peripherals, Initializes the Flash interface and the Systick. */
 //	HAL_Init();
-
 	/* USER CODE BEGIN Init */
-	initTim2();
-	initGPIO();
 	initClock();
+
 	/* USER CODE END Init */
 
 	/* Configure the system clock */
 //	SystemClock_Config();
-
 	/* USER CODE BEGIN SysInit */
+	initTim();
+	initGPIO();
 
 	/* USER CODE END SysInit */
 
@@ -172,7 +181,7 @@ int main(void) {
 	/* USER CODE BEGIN 2 */
 	int timer2 = TIM2->CNT;
 	int timer3 = TIM3->CNT;
-	int temp = 250;
+	int delay = 250;
 	int bt1Debounce = 0;
 	int bt2Debounce = 0;
 
@@ -197,13 +206,13 @@ int main(void) {
 			bt2Debounce = 1;
 		}
 		if (!(GPIOA->IDR & (1 << 2)) && bt2Debounce == 1) {
-			if (temp >= 1000)
-				temp = 250;
+			if (delay >= 1000)
+				delay = 250;
 			else
-				temp += 250;
+				delay += 250;
 			bt2Debounce = 0;
 		}
-		if (TIM2->CNT - timer3 >= temp) {
+		if (TIM2->CNT - timer3 >= delay) {
 			GPIOA->ODR ^= GPIO_PIN_7;
 			timer3 = TIM2->CNT;
 		}
@@ -262,13 +271,13 @@ void SystemClock_Config(void) {
  * @retval None
  */
 /*
-static void MX_GPIO_Init(void) {
+ static void MX_GPIO_Init(void) {
 
-	 GPIO Ports Clock Enable
-	__HAL_RCC_GPIOH_CLK_ENABLE();
+ GPIO Ports Clock Enable
+ __HAL_RCC_GPIOH_CLK_ENABLE();
 
-}
-*/
+ }
+ */
 
 /* USER CODE BEGIN 4 */
 
